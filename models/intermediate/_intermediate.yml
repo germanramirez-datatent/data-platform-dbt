@@ -1,0 +1,72 @@
+version: 2
+ 
+models:
+  - name: int_traffic_with_context
+    description: >
+      Hourly traffic enriched with weather observations and public holiday context.
+      Joins stg_traffic_hourly (hourly) with stg_weather_hourly (hourly) on event_timestamp,
+      and with stg_holidays (daily) on event_date.
+      Both joins are LEFT JOIN — weather gaps or non-holiday days do not drop traffic rows.
+      This model is the single source of truth for all mart-level aggregations.
+    columns:
+      - name: center_id
+        description: Shopping center identifier.
+        tests:
+          - not_null
+ 
+      - name: event_timestamp
+        description: Hourly record timestamp in UTC. Natural PK of this model.
+        tests:
+          - not_null
+          - unique
+ 
+      - name: event_date
+        description: Event date. Used for daily-level joins and aggregations.
+        tests:
+          - not_null
+ 
+      - name: visitors_count
+        description: Number of visitors recorded in that hour.
+        tests:
+          - not_null
+ 
+      - name: day_of_week
+        description: Day of the week in lowercase English.
+        tests:
+          - not_null
+ 
+      - name: temperature_c
+        description: Temperature in degrees Celsius from Open-Meteo (authoritative source).
+ 
+      - name: precipitation_mm
+        description: Precipitation in millimeters from Open-Meteo.
+ 
+      - name: wind_speed_kmh
+        description: Wind speed in km/h from Open-Meteo.
+ 
+      - name: weather_code
+        description: WMO weather condition code from Open-Meteo.
+ 
+      - name: weather_condition_label
+        description: Human-readable WMO classification (clear, rain, snow, etc.).
+ 
+      - name: is_rainy
+        description: True if precipitation_mm >= 1.0.
+ 
+      - name: is_extreme_heat
+        description: True if temperature_c >= 35.0.
+ 
+      - name: is_holiday
+        description: >
+          True if the day has a matching record in stg_holidays.
+          Derived from the LEFT JOIN — false when no holiday record exists for event_date.
+        tests:
+          - not_null
+ 
+      - name: holiday_name
+        description: Spanish name of the holiday if is_holiday is true, otherwise null.
+ 
+      - name: is_adverse_weather
+        description: True if is_rainy or is_extreme_heat. Composite flag for mart-level filtering.
+        tests:
+          - not_null

@@ -1,0 +1,11 @@
+version: 2
+
+sources:
+  - name: curated
+    database: awsdatacatalog
+    schema: "data-platform_dev_curated"
+    tables:
+      - name: traffic
+      - name: weather
+      - name: holidays
+      - name: flights

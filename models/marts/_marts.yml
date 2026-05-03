@@ -1,0 +1,307 @@
+version: 2
+ 
+models:
+  - name: mart_traffic_weekly
+    description: >
+      Weekly traffic aggregation for center EUR_MAD_001.
+      Answers the Facility & Operations question: which weeks historically have the lowest traffic?
+      The works_suitability_score (0-100) normalizes weekly visitors across all weeks for the center —
+      higher score means lower traffic relative to the center's history, making it more suitable for works.
+      Score requires at least 2 weeks of data to be meaningful (single-week = insufficient_data).
+    columns:
+      - name: center_id
+        description: Shopping center identifier.
+        tests:
+          - not_null
+ 
+      - name: week_start
+        description: First day of the ISO week (Monday). Natural PK with center_id.
+        tests:
+          - not_null
+ 
+      - name: year
+        description: Calendar year of the week.
+        tests:
+          - not_null
+ 
+      - name: week_of_year
+        description: ISO week number within the year (1-53).
+        tests:
+          - not_null
+ 
+      - name: weekly_visitors
+        description: Total visitor count for the week.
+        tests:
+          - not_null
+ 
+      - name: avg_daily_visitors
+        description: Average daily visitor count for the week.
+        tests:
+          - not_null
+ 
+      - name: avg_temperature_c
+        description: Average temperature across all days in the week.
+ 
+      - name: rainy_days
+        description: Number of days in the week with significant rainfall (precipitation_mm >= 1.0).
+        tests:
+          - not_null
+ 
+      - name: holiday_days
+        description: Number of public holidays in the week.
+        tests:
+          - not_null
+ 
+      - name: days_with_data
+        description: Number of days with traffic data in the week. Used to detect incomplete weeks.
+        tests:
+          - not_null
+ 
+      - name: works_suitability_score
+        description: >
+          Normalized score 0-100 indicating suitability for construction works.
+          100 = lowest traffic week, 0 = highest traffic week.
+          Null when only one week of data is available (min = max, division by zero avoided via nullif).
+ 
+  - name: mart_weather_impact
+    description: >
+      Historical correlation between weather conditions and visitor traffic by day of week.
+      Answers the Facility & Operations question: how much does rain or extreme heat reduce traffic?
+      Compares average daily visitors on normal days vs rainy days vs extreme heat days,
+      per center and day of week. Impact percentages are negative when weather reduces traffic.
+    columns:
+      - name: center_id
+        description: Shopping center identifier.
+        tests:
+          - not_null
+ 
+      - name: day_of_week
+        description: Day of the week in lowercase English.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+ 
+      - name: avg_visitors_normal
+        description: Average daily visitors on days with no rain and no extreme heat.
+ 
+      - name: avg_visitors_rainy
+        description: Average daily visitors on days with significant rainfall (>= 1mm).
+ 
+      - name: avg_visitors_extreme_heat
+        description: Average daily visitors on days with extreme heat (>= 35°C).
+ 
+      - name: rain_impact_pct
+        description: >
+          Percentage change in visitors on rainy days vs normal days.
+          Negative = traffic reduction. Null if no rainy days in the dataset.
+ 
+      - name: heat_impact_pct
+        description: >
+          Percentage change in visitors on extreme heat days vs normal days.
+          Negative = traffic reduction. Null if no extreme heat days in the dataset.
+ 
+  - name: mart_works_calendar
+    description: >
+      Weekly construction works recommendation calendar for center EUR_MAD_001.
+      Extends mart_traffic_weekly with a human-readable recommendation label and
+      boolean flags explaining the drivers behind the recommendation.
+      Primary output for the Facility & Operations team works planning use case.
+    columns:
+      - name: center_id
+        description: Shopping center identifier.
+        tests:
+          - not_null
+ 
+      - name: week_start
+        description: First day of the ISO week (Monday). Natural PK with center_id.
+        tests:
+          - not_null
+ 
+      - name: year
+        description: Calendar year of the week.
+        tests:
+          - not_null
+ 
+      - name: week_of_year
+        description: ISO week number within the year (1-53).
+        tests:
+          - not_null
+ 
+      - name: weekly_visitors
+        description: Total visitor count for the week.
+        tests:
+          - not_null
+ 
+      - name: avg_daily_visitors
+        description: Average daily visitor count for the week.
+ 
+      - name: avg_temperature_c
+        description: Average temperature across all days in the week.
+ 
+      - name: rainy_days
+        description: Number of days with significant rainfall in the week.
+ 
+      - name: holiday_days
+        description: Number of public holidays in the week.
+ 
+      - name: days_with_data
+        description: Number of days with traffic data in the week.
+ 
+      - name: works_suitability_score
+        description: Normalized suitability score 0-100 from mart_traffic_weekly.
+ 
+      - name: works_recommendation
+        description: >
+          Human-readable recommendation label based on works_suitability_score.
+          Values: optimal (>=75), suitable (>=50), marginal (>=25),
+          not_recommended (<25), insufficient_data (score is null).
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['optimal', 'suitable', 'marginal', 'not_recommended', 'insufficient_data']
+ 
+      - name: has_multiple_holidays
+        description: True if the week contains 2 or more public holidays.
+        tests:
+          - not_null
+ 
+      - name: is_typically_rainy
+        description: True if the week has 3 or more rainy days historically.
+        tests:
+          - not_null
+ 
+      - name: is_typically_hot
+        description: True if the average weekly temperature is >= 30°C.
+        tests:
+          - not_null
+ 
+  - name: mart_visitor_profile
+    description: >
+      Visitor distribution by time slot, day type, and season for center EUR_MAD_001.
+      Answers the Commercial / Leasing question: what visitor profile does the center have
+      by hour of day and time of year?
+      Aggregates hourly traffic into named time slots (morning, midday, afternoon, evening, off_hours),
+      day types (weekday, weekend, holiday), and seasons (spring, summer, autumn, winter).
+      Primary output for the Commercial team leasing brief use case.
+    columns:
+      - name: center_id
+        description: Shopping center identifier.
+        tests:
+          - not_null
+ 
+      - name: time_slot
+        description: >
+          Named time window of the day.
+          morning=09-11h, midday=12-14h, afternoon=15-17h, evening=18-21h, off_hours=rest.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['morning', 'midday', 'afternoon', 'evening', 'off_hours']
+ 
+      - name: hour_of_day
+        description: Hour of the day (0-23). Enables fine-grained sorting within a time slot.
+        tests:
+          - not_null
+ 
+      - name: day_type
+        description: "Type of day: weekday, weekend, or holiday."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['weekday', 'weekend', 'holiday']
+ 
+      - name: season
+        description: "Season of the year: spring, summer, autumn, winter."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['spring', 'summer', 'autumn', 'winter']
+ 
+      - name: data_points
+        description: Number of hourly records contributing to this aggregation bucket.
+        tests:
+          - not_null
+ 
+      - name: total_visitors
+        description: Total visitors across all records in this bucket.
+        tests:
+          - not_null
+ 
+      - name: avg_visitors
+        description: Average visitors per hour in this bucket.
+        tests:
+          - not_null
+ 
+      - name: peak_visitors
+        description: Maximum hourly visitor count observed in this bucket.
+        tests:
+          - not_null
+ 
+      - name: min_visitors
+        description: Minimum hourly visitor count observed in this bucket.
+        tests:
+          - not_null
+ 
+  - name: mart_seasonality_index
+    description: >
+      Normalized weekly seasonality index (0-100) for center EUR_MAD_001.
+      100 = highest traffic week in the center's history, 0 = lowest.
+      Shared mart used by both the Facility and Commercial domains.
+      The traffic_band label provides a human-readable tier for dashboards and leasing briefs.
+      Index requires multiple weeks of data to be meaningful.
+    columns:
+      - name: center_id
+        description: Shopping center identifier.
+        tests:
+          - not_null
+ 
+      - name: week_start
+        description: First day of the ISO week (Monday). Natural PK with center_id.
+        tests:
+          - not_null
+ 
+      - name: year
+        description: Calendar year of the week.
+        tests:
+          - not_null
+ 
+      - name: week_of_year
+        description: ISO week number within the year (1-53).
+        tests:
+          - not_null
+ 
+      - name: weekly_visitors
+        description: Total visitor count for the week.
+        tests:
+          - not_null
+ 
+      - name: avg_daily_visitors
+        description: Average daily visitor count for the week.
+        tests:
+          - not_null
+ 
+      - name: days_with_data
+        description: Number of days with traffic data in the week.
+        tests:
+          - not_null
+ 
+      - name: seasonality_index
+        description: >
+          Normalized index 0-100. Computed as weekly_visitors / max(weekly_visitors) * 100
+          across all weeks for the center. Null when only one week of data exists.
+ 
+      - name: traffic_band
+        description: >
+          Human-readable traffic tier based on seasonality_index.
+          peak (>=80), high (>=60), medium (>=40), low (>=20), very_low (<20).
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['peak', 'high', 'medium', 'low', 'very_low']
