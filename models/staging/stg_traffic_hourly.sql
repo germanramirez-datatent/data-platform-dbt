@@ -16,4 +16,4 @@ renamed as (
     from source
 )
 
-select * from renamed-- test ci trigger
+select * from renamed
