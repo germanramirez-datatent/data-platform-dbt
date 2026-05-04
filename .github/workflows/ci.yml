@@ -1,0 +1,57 @@
+
+Copy
+
+name: CI
+ 
+on:
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - 'models/**'
+      - 'macros/**'
+      - 'dbt_project.yml'
+      - 'profiles.yml'
+      - 'Dockerfile'
+ 
+permissions:
+  contents: read
+ 
+jobs:
+  dbt-compile:
+    name: dbt compile
+    runs-on: ubuntu-latest
+ 
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+ 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+ 
+      - name: Install dbt
+        run: pip install dbt-core==1.11.8 dbt-athena-community==1.10.0
+ 
+      - name: Write profiles.yml
+        run: |
+          mkdir -p ~/.dbt
+          cat > ~/.dbt/profiles.yml << 'EOF'
+          data_platform:
+            target: dev
+            outputs:
+              dev:
+                type: athena
+                region_name: eu-west-1
+                s3_staging_dir: s3://placeholder/
+                s3_data_dir: s3://placeholder/
+                database: awsdatacatalog
+                schema: data_platform_dev_curated
+                work_group: data-platform-dev-analytics
+                threads: 4
+                poll_interval: 1.0
+          EOF
+ 
+      - name: dbt compile
+        run: dbt compile --profiles-dir ~/.dbt
