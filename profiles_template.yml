@@ -12,5 +12,3 @@ data_platform:
       schema: "{{ env_var('DBT_SCHEMA') }}"
       work_group: "{{ env_var('DBT_WORK_GROUP') }}"
       poll_interval: 1.0
-      aws_access_key_id: "{{ env_var('AWS_ACCESS_KEY_ID') }}"
-      aws_secret_access_key: "{{ env_var('AWS_SECRET_ACCESS_KEY') }}"
