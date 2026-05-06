@@ -49,3 +49,4 @@ joined as (
 )
 
 select * from joined
+--run the CD pipeline
